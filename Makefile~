@@ -1,9 +1,0 @@
-all: main
-main: main.o task.o
-	g++ main.o task.o -lboost_thread -o main        
-main.o: main.cpp task.h 
-	g++ -c main.cpp 
-task.o: task.h task.cpp
-	g++ -c task.cpp 
-clean:
-	rm -rf *.o ./main
