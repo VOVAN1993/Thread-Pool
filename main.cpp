@@ -16,6 +16,8 @@
 #include <boost/thread/locks.hpp>
 #include <vector>
 #include <queue>
+#include "Task.h"
+#include <map>
 using namespace std;
 typedef boost::mutex::scoped_lock scoped_lock;
 boost::mutex qMutex;
@@ -25,7 +27,7 @@ boost::mutex countMutex;
 boost::mutex allMutex;
 boost::mutex vecThMutex;
 boost::mutex groupMutex;
-queue<int> q;
+queue<Task*> q;
 vector<boost::thread*> vec;
 boost::thread_group myGroup;
 volatile bool isInterrupt = false;
@@ -93,7 +95,7 @@ void changeCount(int diff) {
 
 void worker() {
     while (true) {
-        int k;
+        Task* k;
         {
             scoped_lock l(qMutex);
             cout << "enter  id= " << boost::this_thread::get_id() << endl;
@@ -141,10 +143,13 @@ void worker() {
                                 }
                             }
                             scoped_lock io(io_Mutex);
-                            cout<<boost::this_thread::get_id()<<" "<<tmp->get_id()<<endl;
+                            //cout<<boost::this_thread::get_id()<<" "<<tmp->get_id()<<endl;
                         }
                         {
-
+                            {
+                                scoped_lock io(io_Mutex);
+                                cout<<tmp->get_id()<<endl;
+                            }
                             scoped_lock grM(groupMutex);
                             myGroup.remove_thread(tmp);
                         }
@@ -155,16 +160,21 @@ void worker() {
             if (q.size() == 0 && isInterrupt) {
                 scoped_lock io(io_Mutex);
                 cout << "exit id=" << boost::this_thread::get_id() << endl;
-                qCond.notify_all();
+                //qCond.notify_all();
                 return;
             }
             k = q.front();
             q.pop();
         }
-        printTask(k);
-        boost::this_thread::sleep(boost::posix_time::seconds(5));
+        //printTask(0);
+        //boost::this_thread::sleep(boost::posix_time::seconds(5));
+        k->run();
+        {
+            scoped_lock lock(io_Mutex);
+            cout<<"id="<<k->getId()<<" "<<"begin="<<k->getBegin()<<" end="<<k->getEnd()<<" result="<<Task::getResult(k->getId())<<" end"<<endl;
+        }
         changeCount(-1);
-        printEndTask(k);
+        //printEndTask(1);
         //printSizeQ();
     }
 }
@@ -180,17 +190,17 @@ int main(int argc, char** argv) {
         }
 
     }
-    int a = 0, k;
+    int a = 0, begin,end,step;
     cin >> a;
     for (int i = 0; i < a; i++) {
-        cin >> k;
+        cin >> begin>>end>>step;
         scoped_lock lock(qMutex);
-        q.push(k);
+        q.push(new Task(begin,end,step));
         if (getCount() + 1 > getAll()) {
             {
                 incAll(1);
                 scoped_lock w(io_Mutex);
-                cout << "getCount= " << getCount() << "\n";
+                //cout << "getCount= " << getCount() << "\n";
             }
             boost::thread *tmp = myGroup.create_thread(boost::bind(&worker));
             {
@@ -204,8 +214,18 @@ int main(int argc, char** argv) {
         changeCount(1);
     }
     isInterrupt = true;
+    {
+                scoped_lock l(qMutex);
+                qCond.notify_all();
+    }
+
     myGroup.join_all();
     std::cout << myGroup.size() << endl;
-    std::cout << "end";
+    std::cout << "end"<<endl;
+    map<unsigned int,double> myMap = Task::getAllResult();
+    for(map<unsigned int,double>::iterator it = myMap.begin();it!=myMap.end();++it){
+        cout<<"id= "<<it->first<<" result="<<it->second<<endl;
+    }
+    
     return 0;
 }
