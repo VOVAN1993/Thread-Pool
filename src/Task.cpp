@@ -11,6 +11,7 @@
 #include <iostream>
 unsigned int Task::curId=0;
 std::map<unsigned int,double> Task::result; 
+std::map<unsigned int,boost::thread::id> Task::taskToId;
 double func(const double v1) {
         return v1;
 }
@@ -41,10 +42,10 @@ Task::~Task() {
 }
 
 double Task::getBegin(){
-    this->begin;
+    return this->begin;
 }
 double Task::getEnd(){
-    this->end;
+    return this->end;
 }
 
 std::map<unsigned int,double> Task::getAllResult(){

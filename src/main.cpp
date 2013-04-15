@@ -17,6 +17,7 @@
 #include <vector>
 #include <queue>
 #include "Task.h"
+#include "func.h"
 #include <map>
 using namespace std;
 typedef boost::mutex::scoped_lock scoped_lock;
@@ -27,6 +28,7 @@ boost::mutex countMutex;
 boost::mutex allMutex;
 boost::mutex vecThMutex;
 boost::mutex groupMutex;
+boost::mutex TaskToIdMutex;
 queue<Task*> q;
 vector<boost::thread*> vec;
 boost::thread_group myGroup;
@@ -36,24 +38,6 @@ volatile bool isInterrupt = false;
  */
 int occupied = 0;
 int all = 2;
-
-double f(double a) {
-    return a*a;
-}
-
-double integrate(double begin, double end, double step) {
-    double res = 0;
-    double interval = (end - begin) / step;
-    //cout<<begin<<" "<<end<<" "<<step<<"\n";
-    //cout<<interval<<"\n";
-    for (int i = 0; i < (step - 1); ++i) {
-        double a = begin + interval * i;
-        double b = begin + interval * (i + 1);
-        res += (f(a) + f(b)) * (b - a) / 2;
-    }
-    //cout<<res<<"\n";
-    return res;
-}
 
 int getAll() {
     scoped_lock l(allMutex);
@@ -107,10 +91,8 @@ void worker() {
                 }
                 {
                     scoped_lock vecM(vecThMutex);
-                    //find(vec.begin(),vec.end(),boost::this_thread) !=vec.end() 
                     if (vec[0]->get_id() == boost::this_thread::get_id() || vec[1]->get_id() == boost::this_thread::get_id()) {
                         scoped_lock io(io_Mutex);
-                        //cout << "isTwo=true" << endl;
                         isTwo = true;
                     }
                 }
@@ -148,7 +130,7 @@ void worker() {
                         {
                             {
                                 scoped_lock io(io_Mutex);
-                                cout<<tmp->get_id()<<endl;
+                                cout << tmp->get_id() << endl;
                             }
                             scoped_lock grM(groupMutex);
                             myGroup.remove_thread(tmp);
@@ -168,10 +150,19 @@ void worker() {
         }
         //printTask(0);
         //boost::this_thread::sleep(boost::posix_time::seconds(5));
+        {
+            scoped_lock mapMutex(TaskToIdMutex);
+            Task::taskToId[k->getId()]=boost::this_thread::get_id();
+        }
         k->run();
+        boost::this_thread::sleep(boost::posix_time::seconds(4));
+        {
+            scoped_lock mapMutex(TaskToIdMutex);
+            Task::taskToId.erase(k->getId());
+        }
         {
             scoped_lock lock(io_Mutex);
-            cout<<"id="<<k->getId()<<" "<<"begin="<<k->getBegin()<<" end="<<k->getEnd()<<" result="<<Task::getResult(k->getId())<<" end"<<endl;
+            cout << "id=" << k->getId() << " " << "begin=" << k->getBegin() << " end=" << k->getEnd() << " result=" << Task::getResult(k->getId()) << " end" << endl;
         }
         changeCount(-1);
         //printEndTask(1);
@@ -184,48 +175,78 @@ int main(int argc, char** argv) {
 
     for (int i = 0; i < col; i++) {
         boost::thread *thr = myGroup.create_thread(boost::bind(&worker));
-        {
+        {   
             scoped_lock l(vecThMutex);
             vec.push_back(thr);
         }
 
     }
-    int a = 0, begin,end,step;
-    cin >> a;
-    for (int i = 0; i < a; i++) {
-        cin >> begin>>end>>step;
-        scoped_lock lock(qMutex);
-        q.push(new Task(begin,end,step));
-        if (getCount() + 1 > getAll()) {
+    int a = 0, begin, end, step;
+    string command;
+    while (1) {
+        cin >> command;
+        if (command == "exit") {
+            break;
+        } else if(command=="del"){
+            unsigned int id;
+            cin>>id;
             {
-                incAll(1);
-                scoped_lock w(io_Mutex);
-                //cout << "getCount= " << getCount() << "\n";
+                scoped_lock mmap(TaskToIdMutex);
+                std::map<unsigned int,boost::thread::id>::iterator it = Task::taskToId.find(id);
+                if(it!=Task::taskToId.end()){
+                    boost::thread* tmp;
+                    scoped_lock io(io_Mutex);
+                    {
+                        scoped_lock vecM(vecThMutex);
+                        
+                        for(unsigned int i=0;i<vec.size();i++){
+                            if(vec.at(i)->get_id()==it->second){
+                                tmp=vec.at(i);
+                            }
+                        }
+                    }
+                    tmp->interrupt();
+                    cout<<"Yes id\n";
+                }else{
+                    scoped_lock io(io_Mutex);
+                    cout<<"No id\n";
+                }
             }
-            boost::thread *tmp = myGroup.create_thread(boost::bind(&worker));
-            {
-                scoped_lock l(vecThMutex);
-                vec.push_back(tmp);
+        }else if (command == "int") {
+            cin >> begin >> end >> step;
+            scoped_lock lock(qMutex);
+            q.push(new Task(begin, end, step));
+            if (getCount() + 1 > getAll()) {
+                {
+                    incAll(1);
+                    scoped_lock w(io_Mutex);
+                    //cout << "getCount= " << getCount() << "\n";
+                }
+                boost::thread *tmp = myGroup.create_thread(boost::bind(&worker));
+                {
+                    scoped_lock l(vecThMutex);
+                    vec.push_back(tmp);
+                }
+                qCond.notify_one();
+            } else {
+                qCond.notify_one();
             }
-            qCond.notify_one();
-        } else {
-            qCond.notify_one();
+            changeCount(1);
         }
-        changeCount(1);
     }
     isInterrupt = true;
     {
-                scoped_lock l(qMutex);
-                qCond.notify_all();
+        scoped_lock l(qMutex);
+        qCond.notify_all();
     }
 
     myGroup.join_all();
     std::cout << myGroup.size() << endl;
-    std::cout << "end"<<endl;
-    map<unsigned int,double> myMap = Task::getAllResult();
-    for(map<unsigned int,double>::iterator it = myMap.begin();it!=myMap.end();++it){
-        cout<<"id= "<<it->first<<" result="<<it->second<<endl;
+    std::cout << "end" << endl;
+    map<unsigned int, double> myMap = Task::getAllResult();
+    for (map<unsigned int, double>::iterator it = myMap.begin(); it != myMap.end(); ++it) {
+        cout << "id= " << it->first << " result=" << it->second << endl;
     }
-    
+
     return 0;
 }

@@ -24,6 +24,8 @@ public:
     double getBegin();
     double getEnd();
     static std::map<unsigned int,double> getAllResult();
+    static std::map<unsigned int,boost::thread::id> taskToId;
+
 private:
     static unsigned int curId;
     static std::map<unsigned int,double> result;
