@@ -16,7 +16,7 @@ double func(const double v1) {
         return v1;
 }
 
-void Task::run() {
+std::pair<unsigned int,double> Task::run() {
     double res = 0;
     double interval = (this->end - this->begin) / this->step;
 
@@ -25,20 +25,21 @@ void Task::run() {
         double b = begin + interval * (i + 1);
         res += (func(a) + func(b)) * (b - a) / 2;
     }
-    {
-        boost::mutex::scoped_lock result_lock;
-        Task::result.insert(std::make_pair(this->id,res));
-    }
+//    {  
+//        boost::mutex::scoped_lock result_lock(resultMutex);
+//        Task::result.insert(std::make_pair(this->id,res));
+//    }
+    return std::make_pair(id,res);
 }
-double Task::getResult(unsigned int _id){
-    
-    boost::mutex::scoped_lock result_lock;
-    if (Task::result.find(_id)!=Task::result.end())
-        return Task::result.find(_id)->second;
-    else
-        return -1;
-   
-}
+//double Task::getResult(unsigned int _id){
+//    
+//    boost::mutex::scoped_lock result_lock(resultMutex);
+//    if (Task::result.find(_id)!=Task::result.end())
+//        return Task::result.find(_id)->second;
+//    else
+//        return -1;
+//   
+//}
 
 Task::~Task() {
 }

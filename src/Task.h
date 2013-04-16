@@ -15,19 +15,19 @@ class Task {
 public:
     Task(const double _begin,const double _end,const int _step):begin(_begin),end(_end),step(_step),id(++curId){};
     Task():begin(0),end(0),step(0),id(++curId){};
-    void run();
+    std::pair<unsigned int,double> run();
     inline unsigned int getId(){return id;};
     Task(const Task& orig);
     virtual ~Task();
-    void setResult(double _result);
-    static double getResult(unsigned int);
+    //void setResult(double _result);
+    //static double getResult(unsigned int);
     double getBegin();
     double getEnd();
     static std::map<unsigned int,double> getAllResult();
     static std::map<unsigned int,boost::thread::id> taskToId;
-
 private:
     static unsigned int curId;
+    static boost::mutex resultMutex;
     static std::map<unsigned int,double> result;
     const double begin;
     const double end;

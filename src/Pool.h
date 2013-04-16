@@ -28,10 +28,15 @@ public:
     virtual ~Pool();
     void exit();
 private:
+     boost::mutex resultMutex;
+     std::map<unsigned int,double> result;
     bool findGeneral(boost::thread::id);
-    void changeOccupied(int);
+    void changeWorkThreads(int);
     void worker2();
-    volatile bool isInterrupt;
+    bool isInterrupt;
+    bool getIsInterrupt();
+    unsigned int getWorkThreads();
+    boost::mutex isInterrup_mutex;
     boost::mutex groupMutex;
     boost::mutex generalThreadMutex;
     boost::mutex allThreadMutex;
@@ -39,8 +44,8 @@ private:
     boost::mutex ioMutex;
     boost::mutex queueMutex;
     boost::condition qCond;
-    unsigned int occupied;
-    boost::mutex occupiedMutex;
+    unsigned int workThreads;
+    boost::mutex workThreadsMutex;
     const unsigned int timeOut;
     const unsigned int quantityHot;
     std::queue<Task*> queueTask;

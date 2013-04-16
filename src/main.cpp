@@ -151,21 +151,21 @@ void worker() {
         }
         //printTask(0);
         //boost::this_thread::sleep(boost::posix_time::seconds(5));
-        {
-            scoped_lock mapMutex(TaskToIdMutex);
-            Task::taskToId[k->getId()]=boost::this_thread::get_id();
-        }
-        k->run();
-        boost::this_thread::sleep(boost::posix_time::seconds(4));
-        {
-            scoped_lock mapMutex(TaskToIdMutex);
-            Task::taskToId.erase(k->getId());
-        }
-        {
-            scoped_lock lock(io_Mutex);
-            cout << "id=" << k->getId() << " " << "begin=" << k->getBegin() << " end=" << k->getEnd() << " result=" << Task::getResult(k->getId()) << " end" << endl;
-        }
-        changeCount(-1);
+//        {
+//            scoped_lock mapMutex(TaskToIdMutex);
+//            Task::taskToId[k->getId()]=boost::this_thread::get_id();
+//        }
+//        //double tmp = k->run();
+//        boost::this_thread::sleep(boost::posix_time::seconds(4));
+//        {
+//            scoped_lock mapMutex(TaskToIdMutex);
+//            Task::taskToId.erase(k->getId());
+//        }
+//        {
+//            scoped_lock lock(io_Mutex);
+//            cout << "id=" << k->getId() << " " << "begin=" << k->getBegin() << " end=" << k->getEnd() << " result=" << Task::getResult(k->getId()) << " end" << endl;
+//        }
+//        changeCount(-1);
         //printEndTask(1);
         //printSizeQ();
     }
