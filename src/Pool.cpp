@@ -62,10 +62,8 @@ void Pool::worker2() {
                             scoped_lock group_mutex(groupMutex);
                             myGroup.remove_thread(removeThread);
                         }
-                        return ;
-                        
+                        return ;    
                     }
-                    std::cout << "NO\n";
                 }
             }
             if (this->queueTask.size() == 0 && isInterrupt) {
@@ -80,10 +78,10 @@ void Pool::worker2() {
             scoped_lock io_mutex(ioMutex);
             std::cout << "Task begin= " << task->getBegin() << " end=" << task->getEnd() << " id=" << task->getId() << std::endl;
         }
-        occupired++;
+        changeOccupied(1);
         task->run();
         boost::this_thread::sleep(boost::posix_time::seconds(10));
-        occupired--;
+        changeOccupied(-1);
         {
             scoped_lock io_mutex(ioMutex);
             std::cout << "Task begin= " << task->getBegin() << " end=" << task->getEnd() << " id=" << task->getId() << " result=" << Task::getResult(task->getId()) << std::endl;
@@ -96,7 +94,7 @@ void Pool::worker2() {
 
 Pool::Pool() : quantityHot(std::max((int) boost::thread::hardware_concurrency(), 1)), timeOut(5) {
     isInterrupt = false;
-    occupired = 0;
+    occupied = 0;
     //std::cout<<"size="<<queueTask.size();
     //setQuantityHotThreads(std::max((int) boost::thread::hardware_concurrency(), 1));
     {
@@ -111,17 +109,13 @@ Pool::Pool() : quantityHot(std::max((int) boost::thread::hardware_concurrency(),
                 scoped_lock allTh_mutex(allThreadMutex);
                 allThreads.push_back(thr);
             }
-            //        {   
-            //            scoped_lock l(vecThMutex);
-            //            vec.push_back(thr);
-            //        }
         }
     }
 }
 
 Pool::Pool(unsigned int _quantityHot, unsigned int _timeOut) : quantityHot(_quantityHot), timeOut(_timeOut) {
     isInterrupt = false;
-    occupired = 0;
+    occupied = 0;
     {
         scoped_lock group(this->groupMutex);
         std::cout << "_cou=" << _quantityHot << std::endl;
@@ -137,10 +131,6 @@ Pool::Pool(unsigned int _quantityHot, unsigned int _timeOut) : quantityHot(_quan
                 scoped_lock allTh_mutex(allThreadMutex);
                 allThreads.push_back(thr);
             }
-            //        {   
-            //            scoped_lock l(vecThMutex);
-            //            vec.push_back(thr);
-            //        }
         }
     }
 }
@@ -151,7 +141,7 @@ void Pool::addTask(double a, double b, double c) {
         scoped_lock io_mutex(ioMutex);
         std::cout << queueTask.size() << " " << this->getQuantityHotThreads() << std::endl;
     }
-    if (occupired + 1 > this->getQuantityHotThreads()) {
+    if (occupied + 1 > this->getQuantityHotThreads()) {
         scoped_lock io_mutex(ioMutex);
         boost::thread *tmp = myGroup.create_thread(boost::bind(&Pool::worker2, this));
         {
@@ -165,8 +155,21 @@ void Pool::addTask(double a, double b, double c) {
    
 }
 
+void Pool::changeOccupied(int _a){
+    scoped_lock occ_mutex(occupiedMutex);
+    occupied+=_a;
+}
 Pool::~Pool() {
     this->myGroup.join_all();
+    {
+        scoped_lock io_mutex(ioMutex);
+        std::cout<<"myGr = "<<myGroup.size()<<" all = "<<allThreads.size()<<std::endl;
+    }
+}
+void Pool::exit(){
+    isInterrupt = true;
+    scoped_lock queue_mutex(queueMutex);
+    qCond.notify_all();
 }
 
 

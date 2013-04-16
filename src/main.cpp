@@ -249,14 +249,25 @@ int main(int argc, char** argv) {
 //        cout << "id= " << it->first << " result=" << it->second << endl;
 //    }
     //Pool p(2);
-    {
-        boost::scoped_ptr<Pool> pool(new Pool(1,10));
+    
+        boost::shared_ptr<Pool> pool(new Pool(1,10));
         while(1){
-            int a,b,c;
-            cin>>a>>b>>c;
-            pool->addTask(a,b,c);
+            std::string command;
+            cin>>command;
+            if(command=="int"){
+                int a,b,c;
+                cin>>a>>b>>c;
+                pool->addTask(a,b,c);
+            }else if(command=="exit"){
+                pool->exit();
+                break;
+            }else if(command=="removeTask"){
+                
+            }else{
+                cout<<"Invalid command\n";
+            }
         }
-    }
+    
 //    worker2();
     return 0;
 }

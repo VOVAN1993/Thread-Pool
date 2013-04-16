@@ -10,7 +10,6 @@
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition.hpp>
-#include "Worker.h"
 #include "Task.h"
 #include <queue>
 class Worker;
@@ -27,8 +26,10 @@ public:
         return quantityHot;
     }
     virtual ~Pool();
+    void exit();
 private:
     bool findGeneral(boost::thread::id);
+    void changeOccupied(int);
     void worker2();
     volatile bool isInterrupt;
     boost::mutex groupMutex;
@@ -38,7 +39,8 @@ private:
     boost::mutex ioMutex;
     boost::mutex queueMutex;
     boost::condition qCond;
-    volatile int occupired;
+    unsigned int occupied;
+    boost::mutex occupiedMutex;
     const unsigned int timeOut;
     const unsigned int quantityHot;
     std::queue<Task*> queueTask;
