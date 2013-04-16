@@ -18,6 +18,7 @@
 #include <queue>
 #include "Task.h"
 #include "func.h"
+#include "Pool.h"
 #include <map>
 using namespace std;
 typedef boost::mutex::scoped_lock scoped_lock;
@@ -171,82 +172,91 @@ void worker() {
 }
 
 int main(int argc, char** argv) {
-    int col = std::max((int) boost::thread::hardware_concurrency(), 1);
-
-    for (int i = 0; i < col; i++) {
-        boost::thread *thr = myGroup.create_thread(boost::bind(&worker));
-        {   
-            scoped_lock l(vecThMutex);
-            vec.push_back(thr);
-        }
-
-    }
-    int a = 0, begin, end, step;
-    string command;
-    while (1) {
-        cin >> command;
-        if (command == "exit") {
-            break;
-        } else if(command=="del"){
-            unsigned int id;
-            cin>>id;
-            {
-                scoped_lock mmap(TaskToIdMutex);
-                std::map<unsigned int,boost::thread::id>::iterator it = Task::taskToId.find(id);
-                if(it!=Task::taskToId.end()){
-                    boost::thread* tmp;
-                    scoped_lock io(io_Mutex);
-                    {
-                        scoped_lock vecM(vecThMutex);
-                        
-                        for(unsigned int i=0;i<vec.size();i++){
-                            if(vec.at(i)->get_id()==it->second){
-                                tmp=vec.at(i);
-                            }
-                        }
-                    }
-                    tmp->interrupt();
-                    cout<<"Yes id\n";
-                }else{
-                    scoped_lock io(io_Mutex);
-                    cout<<"No id\n";
-                }
-            }
-        }else if (command == "int") {
-            cin >> begin >> end >> step;
-            scoped_lock lock(qMutex);
-            q.push(new Task(begin, end, step));
-            if (getCount() + 1 > getAll()) {
-                {
-                    incAll(1);
-                    scoped_lock w(io_Mutex);
-                    //cout << "getCount= " << getCount() << "\n";
-                }
-                boost::thread *tmp = myGroup.create_thread(boost::bind(&worker));
-                {
-                    scoped_lock l(vecThMutex);
-                    vec.push_back(tmp);
-                }
-                qCond.notify_one();
-            } else {
-                qCond.notify_one();
-            }
-            changeCount(1);
-        }
-    }
-    isInterrupt = true;
+//    int col = std::max((int) boost::thread::hardware_concurrency(), 1);
+//
+//    for (int i = 0; i < col; i++) {
+//        boost::thread *thr = myGroup.create_thread(boost::bind(&worker));
+//        {   
+//            scoped_lock l(vecThMutex);
+//            vec.push_back(thr);
+//        }
+//
+//    }
+//    int a = 0, begin, end, step;
+//    string command;
+//    while (1) {
+//        cin >> command;
+//        if (command == "exit") {
+//            break;
+//        } else if(command=="del"){
+//            unsigned int id;
+//            cin>>id;
+//            {
+//                scoped_lock mmap(TaskToIdMutex);
+//                std::map<unsigned int,boost::thread::id>::iterator it = Task::taskToId.find(id);
+//                if(it!=Task::taskToId.end()){
+//                    boost::thread* tmp;
+//                    scoped_lock io(io_Mutex);
+//                    {
+//                        scoped_lock vecM(vecThMutex);
+//                        
+//                        for(unsigned int i=0;i<vec.size();i++){
+//                            if(vec.at(i)->get_id()==it->second){
+//                                tmp=vec.at(i);
+//                            }
+//                        }
+//                    }
+//                    tmp->interrupt();
+//                    cout<<"Yes id\n";
+//                }else{
+//                    scoped_lock io(io_Mutex);
+//                    cout<<"No id\n";
+//                }
+//            }
+//        }else if (command == "int") {
+//            cin >> begin >> end >> step;
+//            scoped_lock lock(qMutex);
+//            q.push(new Task(begin, end, step));
+//            if (getCount() + 1 > getAll()) {
+//                {
+//                    incAll(1);
+//                    scoped_lock w(io_Mutex);
+//                    //cout << "getCount= " << getCount() << "\n";
+//                }
+//                boost::thread *tmp = myGroup.create_thread(boost::bind(&worker));
+//                {
+//                    scoped_lock l(vecThMutex);
+//                    vec.push_back(tmp);
+//                }
+//                qCond.notify_one();
+//            } else {
+//                qCond.notify_one();
+//            }
+//            changeCount(1);
+//        }
+//    }
+//    isInterrupt = true;
+//    {
+//        scoped_lock l(qMutex);
+//        qCond.notify_all();
+//    }
+//
+//    myGroup.join_all();
+//    std::cout << myGroup.size() << endl;
+//    std::cout << "end" << endl;
+//    map<unsigned int, double> myMap = Task::getAllResult();
+//    for (map<unsigned int, double>::iterator it = myMap.begin(); it != myMap.end(); ++it) {
+//        cout << "id= " << it->first << " result=" << it->second << endl;
+//    }
+    //Pool p(2);
     {
-        scoped_lock l(qMutex);
-        qCond.notify_all();
+        boost::scoped_ptr<Pool> pool(new Pool(1,10));
+        while(1){
+            int a,b,c;
+            cin>>a>>b>>c;
+            pool->addTask(a,b,c);
+        }
     }
-
-    myGroup.join_all();
-    std::cout << myGroup.size() << endl;
-    std::cout << "end" << endl;
-    map<unsigned int, double> myMap = Task::getAllResult();
-    for (map<unsigned int, double>::iterator it = myMap.begin(); it != myMap.end(); ++it) {
-        cout << "id= " << it->first << " result=" << it->second << endl;
-    }
-
+//    worker2();
     return 0;
 }

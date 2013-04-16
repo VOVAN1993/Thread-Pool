@@ -7,6 +7,7 @@
 
 #ifndef FUNC_H
 #define	FUNC_H
+#include <iostream>
 double f(double a) {
     return a*a;
 }

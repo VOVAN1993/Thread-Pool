@@ -28,13 +28,15 @@ void Task::run() {
     {
         boost::mutex::scoped_lock result_lock;
         Task::result.insert(std::make_pair(this->id,res));
-        //std::cout<<"aaaaa"<<res<<std::endl;
     }
 }
 double Task::getResult(unsigned int _id){
     
     boost::mutex::scoped_lock result_lock;
-    return Task::result.find(_id)->second;
+    if (Task::result.find(_id)!=Task::result.end())
+        return Task::result.find(_id)->second;
+    else
+        return -1;
    
 }
 
