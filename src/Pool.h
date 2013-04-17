@@ -27,7 +27,9 @@ public:
     }
     virtual ~Pool();
     void exit();
+    int getAll();
 private:
+    void remove_thread();
      boost::mutex resultMutex;
      std::map<unsigned int,double> result;
     bool findGeneral(boost::thread::id);
@@ -38,6 +40,7 @@ private:
     unsigned int getWorkThreads();
     boost::mutex isInterrup_mutex;
     boost::mutex groupMutex;
+    boost::mutex thisMutex;
     boost::mutex generalThreadMutex;
     boost::mutex allThreadMutex;
     boost::thread_group myGroup;

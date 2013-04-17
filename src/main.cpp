@@ -260,9 +260,12 @@ int main(int argc, char** argv) {
                 pool->addTask(a,b,c);
             }else if(command=="exit"){
                 pool->exit();
+               
                 break;
             }else if(command=="removeTask"){
                 
+            }else if(command=="all"){
+                cout<<pool->getAll()<<std::endl;
             }else{
                 cout<<"Invalid command\n";
             }
