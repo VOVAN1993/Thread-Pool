@@ -12,6 +12,7 @@
 #include <boost/thread/condition.hpp>
 #include "Task.h"
 #include <queue>
+#include <map>
 class Worker;
 class Pool {
 public:
@@ -28,21 +29,26 @@ public:
     virtual ~Pool();
     void exit();
     int getAll();
+    void getID(unsigned int _taskid);
 private:
-    void remove_thread();
+    void remove_from_tasktoid(boost::thread::id _id);
+    void myjoin_all();
+    void remove_threads();
      boost::mutex resultMutex;
      std::map<unsigned int,double> result;
     bool findGeneral(boost::thread::id);
+    std::map<unsigned int,boost::thread::id> taskToID;
     void changeWorkThreads(int);
     void worker2();
     bool isInterrupt;
     bool getIsInterrupt();
     unsigned int getWorkThreads();
     boost::mutex isInterrup_mutex;
-    boost::mutex groupMutex;
     boost::mutex thisMutex;
     boost::mutex generalThreadMutex;
     boost::mutex allThreadMutex;
+    boost::mutex taskToIdMutex;
+    boost::shared_mutex all_tmp;
     boost::thread_group myGroup;
     boost::mutex ioMutex;
     boost::mutex queueMutex;

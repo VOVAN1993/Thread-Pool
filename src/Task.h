@@ -19,8 +19,6 @@ public:
     inline unsigned int getId(){return id;};
     Task(const Task& orig);
     virtual ~Task();
-    //void setResult(double _result);
-    //static double getResult(unsigned int);
     double getBegin();
     double getEnd();
     static std::map<unsigned int,double> getAllResult();
