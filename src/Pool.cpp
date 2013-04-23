@@ -135,7 +135,8 @@ void Pool::worker2() {
                     WriteLock task_id_m(taskToIdMutex);
                     taskToID[task->getId()] = boost::this_thread::get_id();
                 }
-                changeWorkThreads(1);
+                //changeWorkThreads(1);
+               workThreads++;
                 queue_mutex.unlock();
             }
             {
@@ -152,7 +153,8 @@ void Pool::worker2() {
                 scoped_lock io_mutex(ioMutex);
                 std::cerr << "Task begin= " << task->getBegin() << " end=" << task->getEnd() << " id=" << task->getId() << " result=" << tmp.second << std::endl;
             }
-            changeWorkThreads(-1);
+            //changeWorkThreads(-1);
+            workThreads--;
         }
     
     }catch(boost::thread_interrupted& e){
