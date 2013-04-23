@@ -29,7 +29,7 @@ public:
     virtual ~Pool();
     void exit();
     int getAll();
-    void getID(unsigned int _taskid);
+    void removeTask(unsigned int _taskid);
 private:
     void remove_from_tasktoid(boost::thread::id _id);
     void myjoin_all();

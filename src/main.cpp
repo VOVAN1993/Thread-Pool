@@ -21,9 +21,27 @@
 #include "Pool.h"
 #include <map>
 using namespace std;
+typedef boost::mutex::scoped_lock scoped_lock;
+boost::mutex qMutex;
+boost::mutex io_Mutex;
+boost::condition qCond;
+boost::mutex countMutex;
+boost::mutex allMutex;
+boost::mutex vecThMutex;
+boost::mutex groupMutex;
+boost::mutex TaskToIdMutex;
+queue<Task*> q;
+vector<boost::thread*> vec;
+boost::thread_group myGroup;
+volatile bool isInterrupt = false;
+/*
+ * 
+ */
+
 
 int main(int argc, char** argv) {
 
+    try{
         boost::shared_ptr<Pool> pool(new Pool(1,10));
         while(1){
             std::string command;
@@ -38,13 +56,16 @@ int main(int argc, char** argv) {
             }else if(command=="del"){
                 int _id;
                 cin>>_id;
-                pool->getID(_id);
+                pool->removeTask(_id);
             }else if(command=="all"){
                 cerr<<pool->getAll()<<std::endl;
             }else{
                 cerr<<"Invalid command\n";
             }
         }
+    }catch(boost::thread_interrupted& e){
+        cerr<<"sdfsdf";
+    } 
     
 //    worker2();
     return 0;
