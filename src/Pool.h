@@ -42,15 +42,11 @@ private:
     std::map<unsigned int,boost::thread::id> taskToID;
     void changeWorkThreads(int);
     void worker2();
-    bool isInterrupt;
+    volatile bool isInterrupt;
     bool getIsInterrupt();
     unsigned int getWorkThreads();
-    boost::mutex isInterrup_mutex;
-    //boost::mutex generalThreadMutex;
-//    boost::mutex allThreadMutex;
     boost::shared_mutex taskToIdMutex;
     boost::shared_mutex all_tmp;
-    boost::thread_group myGroup;
     boost::mutex ioMutex;
     boost::mutex queueMutex;
     boost::condition qCond;

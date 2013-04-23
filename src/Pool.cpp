@@ -253,7 +253,6 @@ Pool::~Pool() {
 }
 
 bool Pool::getIsInterrupt() {
-    scoped_lock inter_mutex(isInterrup_mutex);
     return isInterrupt;
 }
 
@@ -263,10 +262,7 @@ unsigned int Pool::getWorkThreads() {
 }
 
 void Pool::exit() {
-    {
-        scoped_lock inter_mutex(isInterrup_mutex);
         isInterrupt = true;
-    }
 
     {
         scoped_lock queue_mutex(queueMutex);
