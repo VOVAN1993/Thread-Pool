@@ -14,7 +14,6 @@
 #include <utility>
 #include <queue>
 #include <map>
-#include <atomic>
 #include <boost/interprocess/detail/atomic.hpp>
 class Worker;
 class Pool {
@@ -37,8 +36,8 @@ private:
     void remove_from_tasktoid(boost::thread::id _id);
     void myjoin_all();
     void remove_threads();
-    boost::mutex resultMutex;
-    std::map<unsigned int,double> result;
+     boost::mutex resultMutex;
+     std::map<unsigned int,double> result;
     bool findGeneral(boost::thread::id);
     std::map<unsigned int,boost::thread::id> taskToID;
     void changeWorkThreads(int);
@@ -51,12 +50,12 @@ private:
     boost::mutex ioMutex;
     boost::mutex queueMutex;
     boost::condition qCond;
-    //unsigned int workThreads;
-    std::atomic<unsigned int> workThreads;
+    unsigned int workThreads;
     boost::mutex workThreadsMutex;
     const unsigned int timeOut;
     const unsigned int quantityHot;
     std::queue<Task*> queueTask;
+    //std::vector<boost::thread *> generalThreads;
     std::vector<std::pair<boost::thread *,bool> > allThreads;
     Pool(const Pool& orig);
 
