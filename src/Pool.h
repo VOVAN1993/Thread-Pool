@@ -11,8 +11,10 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition.hpp>
 #include "Task.h"
+#include <utility>
 #include <queue>
 #include <map>
+#include <boost/interprocess/detail/atomic.hpp>
 class Worker;
 class Pool {
 public:
@@ -44,10 +46,9 @@ private:
     bool getIsInterrupt();
     unsigned int getWorkThreads();
     boost::mutex isInterrup_mutex;
-    boost::mutex thisMutex;
-    boost::mutex generalThreadMutex;
-    boost::mutex allThreadMutex;
-    boost::mutex taskToIdMutex;
+    //boost::mutex generalThreadMutex;
+//    boost::mutex allThreadMutex;
+    boost::shared_mutex taskToIdMutex;
     boost::shared_mutex all_tmp;
     boost::thread_group myGroup;
     boost::mutex ioMutex;
@@ -58,8 +59,8 @@ private:
     const unsigned int timeOut;
     const unsigned int quantityHot;
     std::queue<Task*> queueTask;
-    std::vector<boost::thread *> generalThreads;
-    std::vector<boost::thread *> allThreads;
+    //std::vector<boost::thread *> generalThreads;
+    std::vector<std::pair<boost::thread *,bool> > allThreads;
     Pool(const Pool& orig);
 
 };

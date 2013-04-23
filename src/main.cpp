@@ -21,19 +21,7 @@
 #include "Pool.h"
 #include <map>
 using namespace std;
-typedef boost::mutex::scoped_lock scoped_lock;
-boost::mutex qMutex;
-boost::mutex io_Mutex;
-boost::condition qCond;
-boost::mutex countMutex;
-boost::mutex allMutex;
-boost::mutex vecThMutex;
-boost::mutex groupMutex;
-boost::mutex TaskToIdMutex;
-queue<Task*> q;
-vector<boost::thread*> vec;
-boost::thread_group myGroup;
-volatile bool isInterrupt = false;
+
 /*
  * 
  */
