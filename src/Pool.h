@@ -10,10 +10,12 @@
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition.hpp>
+
 #include "Task.h"
 #include <utility>
 #include <queue>
 #include <map>
+#include <set>
 #include <atomic>
 #include <boost/interprocess/detail/atomic.hpp>
 class Worker;
@@ -22,7 +24,6 @@ public:
     Pool();
     Pool(unsigned int _quantityHot,unsigned int _timeOut);
     void addTask(double a,double b,double c);
-    void removeTask();
     inline unsigned int getTimeOut(){
         return timeOut;
     }
@@ -44,6 +45,7 @@ private:
     void changeWorkThreads(int);
     void worker2();
     volatile bool isInterrupt;
+    boost::mutex interMutex;
     bool getIsInterrupt();
     unsigned int getWorkThreads();
     boost::shared_mutex taskToIdMutex;
@@ -51,13 +53,13 @@ private:
     boost::mutex ioMutex;
     boost::mutex queueMutex;
     boost::condition qCond;
-    //unsigned int workThreads;
-    std::atomic<unsigned int> workThreads;
+    unsigned int workThreads;
+   // std::atomic<unsigned int> workThreads;
     boost::mutex workThreadsMutex;
     const unsigned int timeOut;
     const unsigned int quantityHot;
-    std::queue<Task*> queueTask;
-    std::vector<std::pair<boost::thread *,bool> > allThreads;
+    std::queue<boost::shared_ptr<Task> > queueTask;
+    std::set<std::pair<boost::shared_ptr<boost::thread> ,bool> > allThreads;
     Pool(const Pool& orig);
 
 };

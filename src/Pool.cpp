@@ -8,12 +8,23 @@ typedef boost::upgrade_lock<boost::shared_mutex> WriteLock;
 
 void Pool::removeTask(unsigned int _taskid) {
     WriteLock all_mutex(all_tmp);
-    ReadLock task(taskToIdMutex);
-    for (std::vector<std::pair<boost::thread*,bool> >::iterator it = allThreads.begin(); it != allThreads.end(); ++it) {
+    WriteLock task(taskToIdMutex);
+    for (std::set<std::pair<boost::shared_ptr<boost::thread>,bool> >::iterator it = allThreads.begin(); it != allThreads.end(); ++it) {
         if ((*it).first->get_id() == taskToID[_taskid]) {
             if(it->second==false){
                 (*it).first->interrupt();
                 allThreads.erase(it);
+            }else{
+                boost::shared_ptr<boost::thread> tmp = (*it).first;
+                allThreads.erase(it);
+                tmp->interrupt();
+               // if(taskToID.find(tmp->get_id())!=taskToID.end()){
+                taskToID.erase(_taskid);
+                changeWorkThreads(-1);
+//                }
+                std::cout<<"TUT\n";
+                boost::shared_ptr<boost::thread> thr(new boost::thread(boost::bind(&Pool::worker2, this)));
+                allThreads.insert(std::make_pair(thr,true));
             }
             break;
         }
@@ -22,7 +33,7 @@ void Pool::removeTask(unsigned int _taskid) {
 
 bool Pool::findGeneral(boost::thread::id _thread_id) {
     ReadLock all_mutex(all_tmp);
-    for (std::vector<std::pair<boost::thread*,bool> >::iterator it = allThreads.begin(); it != allThreads.end(); ++it) {
+    for (std::set<std::pair<boost::shared_ptr<boost::thread>,bool> >::iterator it = allThreads.begin(); it != allThreads.end(); ++it) {
         if( it->first->get_id() == _thread_id && it->second==true){
             return true;
         }
@@ -51,12 +62,8 @@ void Pool::remove_threads() {
         scoped_lock io(ioMutex);
         std::cerr << "Try remove id = " << boost::this_thread::get_id() << std::endl;
     }
-    for (std::vector<std::pair<boost::thread*,bool> >::iterator it = allThreads.begin();
+    for (std::set<std::pair<boost::shared_ptr<boost::thread>,bool> >::iterator it = allThreads.begin();
             it != allThreads.end(); ++it) {
-        {
-            scoped_lock io(ioMutex);
-            std::cerr << "compare remove this_id = " << boost::this_thread::get_id() << "del_id=" << (*it).first->get_id() << std::endl;
-        }
         if ((*it).first->get_id() == boost::this_thread::get_id()) {
             //removeThread = *it;
             {
@@ -76,13 +83,13 @@ void Pool::remove_threads() {
     }
 
 
-    all_mutex.unlock();
+//    all_mutex.unlock();
     return;
 }
 
 void Pool::worker2() {
     try{
-        Task *task = NULL;
+        boost::shared_ptr<Task> task;
         while (true) {
             //boost::this_thread::sleep(boost::posix_time::seconds(5));
             {
@@ -135,8 +142,8 @@ void Pool::worker2() {
                     WriteLock task_id_m(taskToIdMutex);
                     taskToID[task->getId()] = boost::this_thread::get_id();
                 }
-                //changeWorkThreads(1);
-               workThreads++;
+                changeWorkThreads(1);
+               //workThreads++;
                 queue_mutex.unlock();
             }
             {
@@ -153,8 +160,8 @@ void Pool::worker2() {
                 scoped_lock io_mutex(ioMutex);
                 std::cerr << "Task begin= " << task->getBegin() << " end=" << task->getEnd() << " id=" << task->getId() << " result=" << tmp.second << std::endl;
             }
-            //changeWorkThreads(-1);
-            workThreads--;
+            changeWorkThreads(-1);
+            //workThreads--;
         }
     
     }catch(boost::thread_interrupted& e){
@@ -166,20 +173,15 @@ void Pool::worker2() {
 
 
 Pool::Pool(unsigned int _quantityHot, unsigned int _timeOut) : quantityHot(_quantityHot), timeOut(_timeOut) {
-    isInterrupt = false;
+    {
+        scoped_lock l(interMutex);
+            isInterrupt = false;
+    }
     workThreads = 0;
     {
-        //scoped_lock group(this->groupMutex);
         std::cerr << "_cou=" << _quantityHot << std::endl;
         for (int i = 0; i < this->getQuantityHotThreads(); i++) {
-            boost::thread *thr;
-            {
-                //scoped_lock genTh_mutex(generalThreadMutex);
-                thr = new boost::thread(boost::bind(&Pool::worker2, this));
-                //boost::thread *thr = this->myGroup.create_thread(boost::bind(&Pool::worker2, this));
-
-                //generalThreads.push_back(thr);
-            }
+            boost::shared_ptr<boost::thread> thr(new boost::thread(boost::bind(&Pool::worker2, this)));
             {
                 scoped_lock io(ioMutex);
                 std::cerr << thr->get_id() << " hello\n";
@@ -189,7 +191,7 @@ Pool::Pool(unsigned int _quantityHot, unsigned int _timeOut) : quantityHot(_quan
 
             {
                 WriteLock allTh_mutex(all_tmp);
-                allThreads.push_back(std::make_pair(thr,true));
+                allThreads.insert(std::make_pair(thr,true));
                 allTh_mutex.unlock();
             }
         }
@@ -197,25 +199,22 @@ Pool::Pool(unsigned int _quantityHot, unsigned int _timeOut) : quantityHot(_quan
     }
 }
 
-void Pool::addTask(double a, double b, double c) {
+void Pool::addTask(double _begin, double _end, double _step) {
     {
         scoped_lock queue_mutex(this->queueMutex);
         {
-            //    scoped_lock group_mutex(groupMutex);
             WriteLock allTh_mutex(all_tmp);
             if (getWorkThreads() + queueTask.size() >= allThreads.size()) {
                 scoped_lock io_mutex(ioMutex);
-                boost::thread *thr = new boost::thread(boost::bind(&Pool::worker2, this));
-                //boost::thread *tmp = myGroup.create_thread(boost::bind(&Pool::worker2, this));
-                allThreads.push_back(std::make_pair(thr,false));
+                boost::shared_ptr<boost::thread> thr(new boost::thread(boost::bind(&Pool::worker2, this)));
+                allThreads.insert(std::make_pair(thr,false));
+                
                 std::cerr << "New Thread =  " << thr->get_id() << std::endl;
             }
-
             allTh_mutex.unlock();
-            //    group_mutex.unlock();
         }
 
-        this->queueTask.push(new Task(a, b, c));
+        this->queueTask.push(boost::shared_ptr<Task> (new Task(_begin, _end, _step)));
         this->qCond.notify_one();
         queue_mutex.unlock();
     }
@@ -227,34 +226,21 @@ void Pool::changeWorkThreads(int _a) {
 }
 
 Pool::~Pool() {
-    //    {
-    //        scoped_lock io_mutex(ioMutex);
-    //        std::cerr << "myGr = " << myGroup.size() << " all = " << getAll() << std::endl;
-    //    }
-    {
-        //scoped_lock group_mutex(groupMutex);
-        {
-            scoped_lock io(ioMutex);
-            std::cerr << "-----------\n";
-            //std::cerr << myGroup.size();
+//    {
+//        scoped_lock io(ioMutex);
+//        std::cerr << "-----------\n";
+//    }
+//    {
+//        ReadLock all_m(all_tmp);
+//        scoped_lock io_mutex(ioMutex);
+//        std::cerr << " all = " << allThreads.size() << std::endl;
+//        all_m.unlock();
+//    }
 
-        }
-    }
-    //this->myGroup.join_all();
-    myjoin_all();
-    {
-        ReadLock all_m(all_tmp);
-        scoped_lock io_mutex(ioMutex);
-        std::cerr << " all = " << allThreads.size() << std::endl;
-        all_m.unlock();
-    }
-
-    //    for (std::map<unsigned int,double>::const_iterator it=result.begin();it!=result.end();++it){
-    //        std::cout<<"id= "<<it->first<<" ;result= "<<it->second<<std::endl;
-    //    }
 }
 
 bool Pool::getIsInterrupt() {
+    scoped_lock l(interMutex);
     return isInterrupt;
 }
 
@@ -264,7 +250,10 @@ unsigned int Pool::getWorkThreads() {
 }
 
 void Pool::exit() {
+    {
+        scoped_lock l(interMutex);
         isInterrupt = true;
+    }
 
     {
         scoped_lock queue_mutex(queueMutex);
@@ -273,14 +262,18 @@ void Pool::exit() {
         queue_mutex.unlock();
     }
     {
-        ReadLock all_th_mutex(all_tmp);
+        WriteLock all_th_mutex(all_tmp);
         {
             scoped_lock io(ioMutex);
             std::cerr << "-----------\n";
-            for (std::vector<std::pair<boost::thread*,bool> >::iterator it = allThreads.begin(); it != allThreads.end(); ++it) {
+            for (std::set<std::pair<boost::shared_ptr<boost::thread>,bool> >::iterator it = allThreads.begin(); it != allThreads.end(); ++it) {
                 std::cerr << (*it).first->get_id() << std::endl;
             }
         }
+        all_th_mutex.unlock();
+        myjoin_all();
+        all_th_mutex.lock();
+        allThreads.erase(allThreads.begin(),allThreads.end());
         all_th_mutex.unlock();
     }
 
@@ -296,9 +289,7 @@ int Pool::getAll() {
 
 void Pool::myjoin_all() {
     ReadLock t(all_tmp);
-    for ( std::vector<std::pair<boost::thread*,bool> >::iterator it = allThreads.begin(), end = allThreads.end();
-            it != end;
-            ++it) {
+    for ( std::set<std::pair<boost::shared_ptr<boost::thread>,bool> >::iterator it = allThreads.begin(); it != allThreads.end();++it){
         (*it).first->join();
     }
     t.unlock();

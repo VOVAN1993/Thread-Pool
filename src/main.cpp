@@ -6,6 +6,7 @@
  */
 
 #include <cstdlib>
+#include <boost/interprocess/detail/atomic.hpp>
 #include <algorithm>
 #include <iostream>
 #include <boost/thread.hpp>
@@ -21,7 +22,19 @@
 #include "Pool.h"
 #include <map>
 using namespace std;
-
+typedef boost::mutex::scoped_lock scoped_lock;
+boost::mutex qMutex;
+boost::mutex io_Mutex;
+boost::condition qCond;
+boost::mutex countMutex;
+boost::mutex allMutex;
+boost::mutex vecThMutex;
+boost::mutex groupMutex;
+boost::mutex TaskToIdMutex;
+queue<Task*> q;
+vector<boost::thread*> vec;
+boost::thread_group myGroup;
+volatile bool isInterrupt = false;
 /*
  * 
  */
@@ -29,8 +42,7 @@ using namespace std;
 
 int main(int argc, char** argv) {
 
-    try{
-        boost::shared_ptr<Pool> pool(new Pool(1,10));
+        boost::shared_ptr<Pool> pool(boost::shared_ptr<Pool> (new Pool(1,10)));
         while(1){
             std::string command;
             cin>>command;
@@ -51,10 +63,6 @@ int main(int argc, char** argv) {
                 cerr<<"Invalid command\n";
             }
         }
-    }catch(boost::thread_interrupted& e){
-        cerr<<"sdfsdf";
-    } 
-    
 //    worker2();
     return 0;
 }
