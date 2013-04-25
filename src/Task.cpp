@@ -6,11 +6,7 @@
  */
 
 #include "Task.h"
-#include <math.h>
-#include <boost/thread/mutex.hpp>
-#include <iostream>
 unsigned int Task::curId=0;
-std::map<unsigned int,double> Task::result; 
 double func(const double v1) {
         return v1;
 }
@@ -36,8 +32,4 @@ double Task::getBegin(){
 }
 double Task::getEnd(){
     return this->end;
-}
-
-std::map<unsigned int,double> Task::getAllResult(){
-    return Task::result;
 }
